@@ -278,5 +278,61 @@ irb(main):037:0> Post.first.user
   Post Load (0.3ms)  SELECT  "posts".* FROM "posts" ORDER BY "posts"."id" ASC LIMIT ?  [["LIMIT", 1]]
   User Load (0.1ms)  SELECT  "users".* FROM "users" WHERE "users"."id" = ? LIMIT ?  [["id", 1], ["LIMIT", 1]]
 => #<User id: 1, username: "Morah", email: "paul@email.com", password: "123456", created_at: "2020-07-24 01:13:56", updated_at: "2020-07-24 01:13:56">
+```
+6. Create more user and posts, don't forget to add  a user_id in post.
 
+## Add in Commenting
+
+1. You’ve now got a User and a Post and they’ve been linked. Commenting will look quite similar to your Post model but will be related not just to the post who is its “parent” but also to the user who has authored it. Set up the migration and migrate the database for your Comment model.
+
+```sh
+morah@morah-HP-2000-Notebook-PC:~/reddit$ rails generate model Comment body:string user:references post:references
+
+Running via Spring preloader in process 17915
+      invoke  active_record
+      create    db/migrate/20200724033009_create_comments.rb
+      create    app/models/comment.rb
+      invoke    test_unit
+      create      test/models/comment_test.rb
+      create      test/fixtures/comments.yml
+
+rails db:migrate
+```
+2. As before, add validations into your model and test them out in the console (refresh it!). Make sure you’ve required the two foreign keys (for posts and users) to be submitted, otherwise you could potentially have an orphan comment. You should not be able to save an invalid Comment and be able to save a valid Comment.
+
+```sh
+class Comment < ApplicationRecord
+  validates :body, presence: true
+
+  belongs_to :user
+  belongs_to :post
+end
+
+class User < ApplicationRecord
+    validates :username, presence: true, length: { maximum: 25 }
+    validates :email, presence: true
+    validates :password, presence: true, length: { in: 5..16 }
+
+    has_many :posts
+    has_many :comments
+end
+
+class Post < ApplicationRecord
+  validates :title, presence: true
+  validates :body, presence: true
+
+  belongs_to :user
+  has_many :comments
+end
+```
+3. Build a second user and create a new comment which represents this user commenting on the first user’s post.
+
+```sh
+irb(main):051:0> com1 = Comment.new( body: "great jobs guys", user_id: 1, post_id:1)
+irb(main):052:0> com1.save
+  User Load (0.6ms)  SELECT  "users".* FROM "users" WHERE "users"."id" = ? LIMIT ?  [["id", 1], ["LIMIT", 1]]
+  Post Load (0.2ms)  SELECT  "posts".* FROM "posts" WHERE "posts"."id" = ? LIMIT ?  [["id", 1], ["LIMIT", 1]]
+  Comment Create (1.4ms)  INSERT INTO "comments" ("body", "user_id", "post_id", "created_at", "updated_at") VALUES (?, ?, ?, ?, ?)  [["body", "
+   (165.4ms)  commit transaction
+=> true
 ```
