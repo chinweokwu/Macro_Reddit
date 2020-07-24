@@ -192,3 +192,91 @@ irb(main):020:0> u3.save
 => true
 ```
 
+## Playing with Associations
+1. Create your Post model by referencing your data plan from the first step above, migrate the database, and add its validations.
+
+```sh
+morah@morah-HP-2000-Notebook-PC:~/reddit$ rails generate model Post title:string body:text user:references
+
+Running via Spring preloader in process 14569
+      invoke  active_record
+      create    db/migrate/20200724013723_create_posts.rb
+      create    app/models/post.rb
+      invoke    test_unit
+      create      test/models/post_test.rb
+      create      test/fixtures/posts.yml
+```
+```sh
+ morah@morah-HP-2000-Notebook-PC:~/reddit$ rails db:migrate
+
+ == 20200724013723 CreatePosts: migrating ======================================
+-- create_table(:posts)
+  -> 0.0102s
+== 20200724013723 CreatePosts: migrated (0.0103s) =============================
+```
+
+```sh
+class Post < ApplicationRecord
+  validates :title, presence: true
+  validates :body, presence: true
+
+end
+```
+
+2. Test your validations from the console, remembering to reload or relaunch it between changes.
+
+```sh
+irb(main):021:0> reload!
+Reloading...
+=> true
+irb(main):022:0> Post.all
+  Post Load (0.2ms)  SELECT  "posts".* FROM "posts" LIMIT ?  [["LIMIT", 11]]
+=> #<ActiveRecord::Relation []>
+irb(main):023:0> p = Post.new
+irb(main):024:0> p.valid?
+=> false
+```
+
+3. Now set up your associations between User and Post models. Did you remember to include the foreign key column (user_id) in your posts table? If not, you can just add a new migration ($ rails generate migration yourmigrationname) and use the #add_column method mentioned above.
+ 
+```sh
+class User < ApplicationRecord
+   ...
+
+    has_many :posts
+end
+```
+```sh
+class Post < ApplicationRecord
+  ...  
+
+  belongs_to :user
+end
+```
+4. If you’ve properly set up your associations, you should be able to use a few more methods in the console, including finding a User’s Posts and finding the Post’s User. First test finding your lonely User’s Posts – > User.first.posts. It should be an empty array since you haven’t created posts, but it shouldn’t throw an error at you.
+
+```sh
+irb(main):033:0> Post.all
+  Post Load (14.5ms)  SELECT  "posts".* FROM "posts" LIMIT ?  [["LIMIT", 11]]
+=> #<ActiveRecord::Relation []>
+
+irb(main):034:0> p = Post.new(title: 'First Post', body: 'It gonna be a bright, bright sunshining day', user_id: 1)
+
+irb(main):035:0> p.save
+   (0.1ms)  begin transaction
+  User Load (0.6ms)  SELECT  "users".* FROM "users" WHERE "users"."id" = ? LIMIT ?  [["id", 1], ["LIMIT", 1]]
+  Post Create (16.3ms)  INSERT INTO "posts" ("title", "body", "user_id", "created_at", "updated_at") VALUES (?, ?, ?, ?, ?)  [["title", "First Post"], ["body", "It gonna be a bright, bright sunshining day"], ["user_id", 1], ["created_at", "2020-07-24 02:08:27.954229"], ["updated_at", "2020-07-24 02:08:27.954229"]]
+   (91.2ms)  commit transaction
+=> true
+
+irb(main):036:0> User.first.posts
+  User Load (0.6ms)  SELECT  "users".* FROM "users" ORDER BY "users"."id" ASC LIMIT ?  [["LIMIT", 1]]
+  Post Load (0.3ms)  SELECT  "posts".* FROM "posts" WHERE "posts"."user_id" = ? LIMIT ?  [["user_id", 1], ["LIMIT", 11]]
+=> #<ActiveRecord::Associations::CollectionProxy [#<Post id: 1, title: "First Post", body: "It gonna be a bright, bright sunshining day", user_id: 1, created_at: "2020-07-24 02:08:27", updated_at: "2020-07-24 02:08:27">]>
+
+irb(main):037:0> Post.first.user
+  Post Load (0.3ms)  SELECT  "posts".* FROM "posts" ORDER BY "posts"."id" ASC LIMIT ?  [["LIMIT", 1]]
+  User Load (0.1ms)  SELECT  "users".* FROM "users" WHERE "users"."id" = ? LIMIT ?  [["id", 1], ["LIMIT", 1]]
+=> #<User id: 1, username: "Morah", email: "paul@email.com", password: "123456", created_at: "2020-07-24 01:13:56", updated_at: "2020-07-24 01:13:56">
+
+```
